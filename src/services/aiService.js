@@ -2,7 +2,6 @@ const GROQ_MODEL = 'llama-3.3-70b-versatile'
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 function getApiKey() {
-  // Priority: 1) Env var (baked in by owner), 2) User's own key from Settings
   return import.meta.env.VITE_GROQ_API_KEY || localStorage.getItem('cx_api_key') || ''
 }
 
@@ -11,12 +10,25 @@ export function hasEnvKey() {
   return !!(k && k !== 'gsk_your_key_here' && k.startsWith('gsk_'))
 }
 
+// ── Get current logged-in user's UID ─────────────────────────────────────────
+function getCurrentUID() {
+  try {
+    const user = JSON.parse(localStorage.getItem('cx_user') || '{}')
+    return user.uid || 'guest'
+  } catch {
+    return 'guest'
+  }
+}
+
+// ── User-specific storage keys ────────────────────────────────────────────────
+function historyKey() { return `cx_history_${getCurrentUID()}` }
+function snippetsKey() { return `cx_snippets_${getCurrentUID()}` }
+
 async function callGroq(systemPrompt, userMessage) {
   const apiKey = getApiKey()
   if (!apiKey || apiKey === 'gsk_your_key_here') {
-    throw new Error('API key not configured. Add your Groq key to Settings, or update the .env file.')
+    throw new Error('API key not configured. Add your Groq key in Settings.')
   }
-
   const response = await fetch(GROQ_API_URL, {
     method: 'POST',
     headers: {
@@ -33,12 +45,10 @@ async function callGroq(systemPrompt, userMessage) {
       ],
     }),
   })
-
   if (!response.ok) {
     const err = await response.json().catch(() => ({}))
     throw new Error(err?.error?.message || `API Error: ${response.status}`)
   }
-
   const data = await response.json()
   return data.choices?.[0]?.message?.content || 'No response received.'
 }
@@ -53,8 +63,7 @@ Format:
 \`\`\`
 **What this does:** brief summary
 **Key points:**
-- point 1
-- point 2`
+- point 1`
   return callGroq(system, `Generate ${language} code for: ${prompt}`)
 }
 
@@ -68,7 +77,7 @@ export async function checkCode(code, language) {
 }
 
 export async function fixCode(code, language, issues) {
-  const system = `You are a senior developer. Fix all issues in the code. Return ONLY the fixed code in a code block, then a changelog.
+  const system = `You are a senior developer. Fix all issues. Return ONLY fixed code in a code block, then changelog.
 Format:
 \`\`\`${language}
 // fixed code
@@ -138,11 +147,24 @@ export async function analyzeRepo(repoUrl) {
   return callGroq(system, `Analyze: ${repoUrl}`)
 }
 
+// ── History — per user ────────────────────────────────────────────────────────
 export function saveToHistory(tool, input, output) {
-  const h = JSON.parse(localStorage.getItem('cx_history')||'[]')
-  h.unshift({ id: Date.now().toString(), tool, input: input.substring(0,200), output: output.substring(0,500), createdAt: new Date().toISOString() })
-  localStorage.setItem('cx_history', JSON.stringify(h.slice(0,50)))
+  const key = historyKey()
+  const h = JSON.parse(localStorage.getItem(key) || '[]')
+  h.unshift({
+    id: Date.now().toString(),
+    tool,
+    input: input.substring(0, 200),
+    output: output.substring(0, 500),
+    createdAt: new Date().toISOString(),
+  })
+  localStorage.setItem(key, JSON.stringify(h.slice(0, 50)))
 }
 
-export const getHistory = () => JSON.parse(localStorage.getItem('cx_history')||'[]')
-export const clearHistory = () => localStorage.setItem('cx_history','[]')
+export function getHistory() {
+  return JSON.parse(localStorage.getItem(historyKey()) || '[]')
+}
+
+export function clearHistory() {
+  localStorage.setItem(historyKey(), '[]')
+}
