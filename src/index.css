@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: #F7F6F2;
+    color: #1C1917;
+    font-family: 'Figtree', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: #F7F6F2; }
+  ::-webkit-scrollbar-thumb { background: #D4D0C8; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #A8A29E; }
+
+  ::selection { background: #C7D2FE; color: #4338CA; }
+
+  h1,h2,h3,h4,h5,h6 { font-family: 'Bricolage Grotesque', sans-serif; }
+}
+
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply bg-cx-indigo text-white font-body font-semibold px-5 py-2.5 rounded-xl
+           hover:bg-indigo-700 transition-all duration-200 shadow-soft
+           hover:shadow-card active:scale-[0.98] text-sm;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-cx-sub font-body font-medium px-5 py-2.5 rounded-xl
+           border border-cx-border hover:border-cx-border2 hover:bg-cx-bg
+           transition-all duration-200 shadow-soft active:scale-[0.98] text-sm;
+  }
+
+  .btn-amber {
+    @apply bg-cx-amber text-white font-body font-semibold px-5 py-2.5 rounded-xl
+           hover:bg-amber-600 transition-all duration-200 shadow-soft active:scale-[0.98] text-sm;
+  }
+
+  .btn-ghost {
+    @apply text-cx-muted font-body font-medium px-4 py-2 rounded-lg
+           hover:bg-cx-border hover:text-cx-sub transition-all duration-200 text-sm;
+  }
+
+  .btn-danger {
+    @apply bg-cx-rose text-white font-body font-semibold px-5 py-2.5 rounded-xl
+           hover:bg-rose-700 transition-all duration-200 shadow-soft active:scale-[0.98] text-sm;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-2xl border border-cx-border shadow-soft p-6;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-card hover:-translate-y-0.5 transition-all duration-200;
+  }
+
+  /* Inputs */
+  .input-field {
+    @apply bg-white border border-cx-border rounded-xl px-4 py-2.5
+           text-cx-text font-body text-sm w-full
+           focus:outline-none focus:border-cx-indigo focus:shadow-glow-indigo
+           transition-all duration-200 placeholder-cx-faint;
+  }
+
+  .select-field {
+    @apply bg-white border border-cx-border rounded-xl px-4 py-2.5
+           text-cx-text font-body text-sm
+           focus:outline-none focus:border-cx-indigo
+           transition-all duration-200 cursor-pointer;
+  }
+
+  textarea.input-field {
+    @apply resize-none leading-relaxed;
+  }
+
+  /* Tags / Badges */
+  .badge {
+    @apply text-xs font-body font-medium px-2.5 py-1 rounded-full;
+  }
+
+  .badge-indigo { @apply badge bg-cx-indigo-light text-cx-indigo; }
+  .badge-amber  { @apply badge bg-cx-amber-light text-cx-amber; }
+  .badge-emerald { @apply badge bg-cx-emerald-light text-cx-emerald; }
+  .badge-rose { @apply badge bg-cx-rose-light text-cx-rose; }
+  .badge-sky { @apply badge bg-cx-sky-light text-cx-sky; }
+  .badge-gray { @apply badge bg-cx-bg text-cx-muted border border-cx-border; }
+
+  /* Sidebar */
+  .sidebar-link {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-body
+           text-cx-muted hover:text-cx-sub hover:bg-white
+           transition-all duration-150 cursor-pointer font-medium;
+  }
+
+  .sidebar-link.active {
+    @apply text-cx-indigo bg-cx-indigo-light font-semibold;
+  }
+
+  /* Divider */
+  .divider {
+    @apply border-t border-cx-border my-4;
+  }
+
+  /* Section header */
+  .section-label {
+    @apply text-xs font-body font-semibold text-cx-faint uppercase tracking-widest px-3 mb-1;
+  }
+
+  /* Loading skeleton */
+  .skeleton {
+    @apply rounded-lg bg-gradient-to-r from-cx-bg via-cx-border to-cx-bg bg-[length:200%_100%]
+           animate-shimmer;
+  }
+
+  /* Code block header */
+  .code-header {
+    @apply flex items-center justify-between bg-cx-bg border border-cx-border border-b-0
+           rounded-t-xl px-4 py-2.5;
+  }
+
+  /* Result sections */
+  .result-error {
+    @apply p-4 rounded-xl border bg-cx-rose-light border-rose-200;
+  }
+  .result-warning {
+    @apply p-4 rounded-xl border bg-cx-amber-light border-amber-200;
+  }
+  .result-success {
+    @apply p-4 rounded-xl border bg-cx-emerald-light border-emerald-200;
+  }
+  .result-info {
+    @apply p-4 rounded-xl border bg-cx-sky-light border-sky-200;
+  }
+}
