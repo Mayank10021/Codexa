@@ -130,6 +130,19 @@ export async function registerWithEmail(name, email, password) {
 // ── Resend verification email ─────────────────────────────────────────────────
 export async function resendVerificationEmail(email, password) {
   if (!auth) throw new Error('FIREBASE_NOT_CONFIGURED')
+  
+  // Password nahi hai toh directly current user use karo
+  if (!password) {
+    const currentUser = auth.currentUser
+    if (currentUser && !currentUser.emailVerified) {
+      await sendEmailVerification(currentUser, {
+        url: window.location.origin + '/login',
+      })
+      return true
+    }
+    throw new Error('Please enter your password to resend the email.')
+  }
+
   try {
     const result = await signInWithEmailAndPassword(auth, email, password)
     if (!result.user.emailVerified) {
@@ -139,9 +152,16 @@ export async function resendVerificationEmail(email, password) {
       await signOut(auth)
       return true
     }
+    // Already verified
     return false
-  } catch {
-    throw new Error('Could not resend email. Please try again.')
+  } catch (err) {
+    if (err.message.includes('wrong-password') || err.message.includes('invalid-credential'))
+      throw new Error('Incorrect password. Please enter the correct password.')
+    if (err.message.includes('too-many-requests'))
+      throw new Error('Too many attempts. Please wait a few minutes.')
+    if (err.message.includes('user-not-found'))
+      throw new Error('No account found with this email.')
+    throw new Error(err.message)
   }
 }
 
