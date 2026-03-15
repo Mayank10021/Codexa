@@ -16,18 +16,19 @@ import Optimizer from './pages/Optimizer'
 import Debugger from './pages/Debugger'
 import Snippets from './pages/Snippets'
 import GitHub from './pages/GitHub'
+import ForgotPassword from './pages/ForgotPassword'
 import { getUser, logout, persistUser, onAuthChange } from './services/authService'
 
-const PUBLIC = ['/', '/login', '/register']
+const PUBLIC = ['/', '/login', '/register', '/forgot-password']
 
 function AppContent({ user, setUser }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const loc = useLocation()
-  const isAuthPage = loc.pathname === '/login' || loc.pathname === '/register'
+  const isAuthPage = loc.pathname === '/login' || loc.pathname === '/register' || loc.pathname === '/forgot-password'
   const isHome = loc.pathname === '/'
   const isPublic = PUBLIC.includes(loc.pathname)
 
-  if (user && isAuthPage) return <Navigate to="/dashboard" replace />
+  if (user && (loc.pathname === '/login' || loc.pathname === '/register')) return <Navigate to="/dashboard" replace />
   if (!user && !isPublic) return <Navigate to="/login" replace />
 
   const handleLogout = async () => {
@@ -54,6 +55,7 @@ function AppContent({ user, setUser }) {
             <Routes>
               <Route path="/login" element={<Login onLogin={handleLogin} />} />
               <Route path="/register" element={<Register onLogin={handleLogin} />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
             </Routes>
           ) : (
             <div className={isPublic ? '' : 'p-5 max-w-6xl'}>
