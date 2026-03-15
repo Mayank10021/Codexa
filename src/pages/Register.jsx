@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Sparkles, Check, ArrowRight, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, Sparkles, Check, ArrowRight, AlertCircle, Mail, RefreshCw } from 'lucide-react'
 import { register, loginWithGoogle, isFirebaseConfigured } from '../services/authService'
+import { resendVerificationEmail } from '../services/firebase'
 import FirebaseSetupBanner from '../components/FirebaseSetupBanner'
 
 const GoogleIcon = () => (
@@ -13,6 +14,7 @@ const GoogleIcon = () => (
   </svg>
 )
 
+
 function friendlyError(msg) {
   if (!msg) return 'Something went wrong.'
   if (msg === 'FIREBASE_NOT_CONFIGURED') return null
@@ -21,24 +23,120 @@ function friendlyError(msg) {
   if (msg.includes('weak-password')) return 'Password is too weak. Use at least 6 characters.'
   if (msg.includes('invalid-email')) return 'Please enter a valid email address.'
   if (msg.includes('popup-closed')) return 'Login popup was closed. Please try again.'
-  if (msg.includes('popup-blocked')) return 'Browser blocked the popup. Please allow popups for this site.'
-  if (msg.includes('network-request-failed')) return 'Network error. Check your internet connection.'
+  if (msg.includes('popup-blocked')) return 'Browser blocked the popup. Please allow popups.'
+  if (msg.includes('network-request-failed')) return 'Network error. Check your connection.'
   return msg
 }
 
+// ── Email Sent Screen ─────────────────────────────────────────────────────────
+function VerificationSent({ email, password }) {
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleResend = async () => {
+    setResending(true); setError('')
+    try {
+      await resendVerificationEmail(email, password)
+      setResent(true)
+      setTimeout(() => setResent(false), 4000)
+    } catch (e) {
+      setError(e.message)
+    } finally { setResending(false) }
+  }
+
+  return (
+    <div className="min-h-screen bg-cx-bg flex items-center justify-center p-6">
+      <div className="w-full max-w-md animate-fade-up">
+        <div className="card text-center py-10 px-8">
+          {/* Mail icon */}
+          <div className="w-20 h-20 bg-cx-indigo-light border-2 border-cx-indigo-mid rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <Mail size={36} className="text-cx-indigo" />
+          </div>
+
+          <h1 className="font-display font-bold text-2xl text-cx-text mb-2">
+            Check your inbox!
+          </h1>
+          <p className="text-cx-muted text-sm font-body leading-relaxed mb-1">
+            We sent a verification link to
+          </p>
+          <p className="font-mono font-bold text-cx-indigo text-sm mb-6 bg-cx-indigo-light px-4 py-2 rounded-xl inline-block">
+            {email}
+          </p>
+
+          <div className="bg-cx-bg border border-cx-border rounded-2xl p-4 mb-6 text-left space-y-3">
+            {[
+              'Open your email inbox',
+              'Click the verification link',
+              'Come back and sign in',
+            ].map((s, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-cx-indigo text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                  {i + 1}
+                </div>
+                <p className="text-cx-sub text-sm font-body">{s}</p>
+              </div>
+            ))}
+          </div>
+
+          {error && (
+            <div className="p-3 bg-cx-rose-light border border-rose-200 rounded-xl mb-4 flex items-start gap-2">
+              <AlertCircle size={14} className="text-cx-rose mt-0.5 flex-shrink-0" />
+              <p className="text-cx-rose text-xs font-body">{error}</p>
+            </div>
+          )}
+
+          {resent && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl mb-4 flex items-center gap-2">
+              <Check size={14} className="text-cx-emerald flex-shrink-0" />
+              <p className="text-cx-emerald text-xs font-body font-semibold">Verification email resent!</p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3">
+            <Link to="/login" className="btn-primary w-full flex items-center justify-center gap-2 py-3">
+              Go to Sign In <ArrowRight size={15} />
+            </Link>
+            <button
+              onClick={handleResend}
+              disabled={resending}
+              className="btn-secondary w-full flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {resending
+                ? <><div className="w-4 h-4 border-2 border-gray-300 border-t-cx-indigo rounded-full animate-spin" /> Sending...</>
+                : <><RefreshCw size={14} /> Resend verification email</>
+              }
+            </button>
+          </div>
+
+          <p className="text-cx-faint text-xs mt-5 font-body">
+            Didn't receive it? Check your spam folder too.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Register Page ────────────────────────────────────────────────────────
 export default function Register({ onLogin }) {
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
   const [show, setShow] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(null)
+  const [verificationSent, setVerificationSent] = useState(false)
   const navigate = useNavigate()
   const firebaseReady = isFirebaseConfigured()
 
   const handleAuth = async (fn, type) => {
     setError(''); setLoading(type)
     try {
-      const user = await fn()
-      onLogin(user); navigate('/dashboard')
+      const result = await fn()
+      if (result?.needsVerification) {
+        setVerificationSent(true) // show verification screen
+      } else {
+        onLogin(result); navigate('/dashboard')
+      }
     } catch (err) {
       const friendly = friendlyError(err.message)
       if (friendly) setError(friendly)
@@ -48,7 +146,13 @@ export default function Register({ onLogin }) {
   const handleEmail = (e) => {
     e.preventDefault()
     if (form.password.length < 6) { setError('Password must be at least 6 characters'); return }
+    if (form.password !== form.confirm) { setError('Passwords do not match'); return }
     handleAuth(() => register(form.name, form.email, form.password), 'email')
+  }
+
+  // Show verification sent screen
+  if (verificationSent) {
+    return <VerificationSent email={form.email} password={form.password} />
   }
 
   return (
@@ -87,16 +191,14 @@ export default function Register({ onLogin }) {
         </div>
         <div className="relative bg-white/10 backdrop-blur rounded-2xl p-5 border border-white/20">
           <div className="flex gap-0.5 mb-3">
-            {[...Array(5)].map((_, i) => (
-              <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill="#FCD34D"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            ))}
+            {[...Array(5)].map((_, i) => <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill="#FCD34D"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>)}
           </div>
           <p className="text-white text-sm font-body leading-relaxed">"Codexa is my daily driver. The auto-fix alone saved my project deadline."</p>
           <p className="text-indigo-300 text-xs mt-2 font-semibold">Aryan K. · Backend Engineer</p>
         </div>
       </div>
 
-      {/* Right — register form */}
+      {/* Right — form */}
       <div className="flex-1 flex items-center justify-center p-6 bg-cx-bg">
         <div className="w-full max-w-sm animate-fade-up">
           <div className="flex items-center gap-2 mb-8 lg:hidden">
@@ -134,7 +236,7 @@ export default function Register({ onLogin }) {
             <div>
               <label className="block text-xs font-semibold text-cx-sub mb-1.5 font-body">Full name</label>
               <input type="text" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))}
-                className="input-field" placeholder="Name" required />
+                className="input-field" placeholder="Mayank Aneja" required />
             </div>
             <div>
               <label className="block text-xs font-semibold text-cx-sub mb-1.5 font-body">Email</label>
@@ -152,6 +254,25 @@ export default function Register({ onLogin }) {
                   {show ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-cx-sub mb-1.5 font-body">Confirm password</label>
+              <div className="relative">
+                <input type={show ? 'text' : 'password'} value={form.confirm}
+                  onChange={e => setForm(f => ({...f, confirm: e.target.value}))}
+                  className={`input-field pr-10 ${form.confirm && form.confirm !== form.password ? 'border-cx-rose focus:border-cx-rose' : form.confirm && form.confirm === form.password ? 'border-cx-emerald' : ''}`}
+                  placeholder="Re-enter password" required />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {form.confirm && form.confirm === form.password
+                    ? <Check size={14} className="text-cx-emerald" />
+                    : form.confirm
+                    ? <AlertCircle size={14} className="text-cx-rose" />
+                    : null}
+                </div>
+              </div>
+              {form.confirm && form.confirm !== form.password && (
+                <p className="text-cx-rose text-xs mt-1 font-body">Passwords do not match</p>
+              )}
             </div>
 
             {error && (
