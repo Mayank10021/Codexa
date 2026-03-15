@@ -13,7 +13,6 @@ export async function loginWithGoogle() {
   return signInWithGoogle()
 }
 
-
 export async function login(email, password) {
   if (isFirebaseConfigured()) {
     return signInWithEmail(email, password)
