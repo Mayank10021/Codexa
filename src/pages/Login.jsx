@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Sparkles, ArrowRight, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, Sparkles, ArrowRight, AlertCircle, Mail, RefreshCw, Check } from 'lucide-react'
 import { login, loginWithGoogle, isFirebaseConfigured } from '../services/authService'
+import { resendVerificationEmail } from '../services/firebase'
 import FirebaseSetupBanner from '../components/FirebaseSetupBanner'
 
 const GoogleIcon = () => (
@@ -13,15 +14,11 @@ const GoogleIcon = () => (
   </svg>
 )
 
-const GitHubIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-  </svg>
-)
 
 function friendlyError(msg) {
   if (!msg) return 'Something went wrong. Please try again.'
-  if (msg === 'FIREBASE_NOT_CONFIGURED') return null // handled by banner
+  if (msg === 'FIREBASE_NOT_CONFIGURED') return null
+  if (msg === 'EMAIL_NOT_VERIFIED') return 'EMAIL_NOT_VERIFIED'
   if (msg.includes('user-not-found') || msg.includes('wrong-password') || msg.includes('invalid-credential'))
     return 'Incorrect email or password.'
   if (msg.includes('too-many-requests'))
@@ -160,7 +157,10 @@ export default function Login({ onLogin }) {
                 className="input-field" placeholder="you@example.com" required />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-cx-sub mb-1.5 font-body">Password</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-cx-sub font-body">Password</label>
+                <Link to="/forgot-password" className="text-xs text-cx-indigo hover:underline font-body font-medium">Forgot password?</Link>
+              </div>
               <div className="relative">
                 <input type={show ? 'text' : 'password'} value={form.password}
                   onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
@@ -172,10 +172,37 @@ export default function Login({ onLogin }) {
               </div>
             </div>
 
-            {error && (
+            {error && error !== 'EMAIL_NOT_VERIFIED' && (
               <div className="p-3 bg-cx-rose-light border border-rose-200 rounded-xl flex items-start gap-2">
                 <AlertCircle size={14} className="text-cx-rose flex-shrink-0 mt-0.5" />
                 <p className="text-cx-rose text-xs font-body leading-relaxed">{error}</p>
+              </div>
+            )}
+            {error === 'EMAIL_NOT_VERIFIED' && (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
+                <div className="flex items-start gap-2">
+                  <Mail size={15} className="text-cx-amber flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-amber-800 text-xs font-semibold font-body">Email not verified yet</p>
+                    <p className="text-amber-600 text-xs font-body mt-0.5">Please check your inbox and click the verification link before signing in.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!form.email || !form.password) return
+                    try { await resendVerificationEmail(form.email, form.password); setError('RESENT') }
+                    catch (e) { setError(e.message) }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 text-xs font-body font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 border border-amber-300 py-2 rounded-lg transition-all">
+                  <RefreshCw size={12} /> Resend verification email
+                </button>
+              </div>
+            )}
+            {error === 'RESENT' && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2">
+                <Check size={14} className="text-cx-emerald flex-shrink-0" />
+                <p className="text-cx-emerald text-xs font-body font-semibold">Verification email resent! Check your inbox.</p>
               </div>
             )}
 
